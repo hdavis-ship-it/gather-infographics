@@ -217,7 +217,8 @@
   }
   #chart-holder {
     width: 100%;
-    height: 460px;
+    height: auto;              /* grows to fit chart + axis title + legend */
+    position: relative;
     margin-top: 36px;          /* breathing room between title and chart */
     /* point Carbon's font at Merriweather */
     --cds-charts-font-family: 'Merriweather', serif;
@@ -284,6 +285,9 @@
 
   /* Hide Carbon's default toolbar entirely */
   .cds--cc--toolbar { display: none !important; }
+  /* Axis titles: match the gray of the data (tick) labels, normal weight
+     (the ALL-CAPS comes from uppercasing the text itself). */
+  #card .axis-title { fill: #525252; font-weight: 400; }
 </style>
 </head>
 <body>
@@ -511,13 +515,66 @@
 
     /* apply the horizontal/vertical axis titles onto Carbon axes (bottom = horizontal,
        left = vertical), regardless of chart orientation */
-    function applyAxisTitles(axes) {
-      if (state.xAxis && axes.bottom) axes.bottom.title = state.xAxis;
-      if (state.yAxis && axes.left) axes.left.title = state.yAxis;
-      return axes;
+    // Axis titles and the comparison legend are drawn as our own HTML overlays (see
+    // render()), so Carbon renders only the plot + ticks. HTML overlays never get
+    // clipped in the PNG and give exact control over spacing, ALL CAPS, colour, and
+    // alignment. So Carbon itself gets no axis titles.
+    function applyAxisTitles(axes) { return axes; }
+
+    // One gap value for BOTH axis titles, and the title band thickness.
+    var AXIS_GAP = 20;
+    var AXIS_TITLE_H = 14;
+
+    // Align the HTML overlays (x-axis title + legend) to the plot's left edge — the
+    // X-axis vertical line — measured from Carbon's grid backdrop after it renders.
+    function alignCartesianOverlays(holder) {
+      var backdrop = holder.querySelector(".chart-grid-backdrop rect") ||
+                     holder.querySelector(".chart-grid-backdrop");
+      if (!backdrop) return;
+      var bb = backdrop.getBoundingClientRect();
+      // offsets are measured against each overlay's OWN box, so the left gutter
+      // (holder padding) is never counted twice
+      var xt = holder.querySelector(".ov-xtitle");
+      if (xt) {
+        var xr = xt.getBoundingClientRect();
+        xt.style.paddingLeft = Math.max(0, Math.round(bb.left - xr.left)) + "px";
+        xt.style.paddingRight = Math.max(0, Math.round(xr.right - bb.right)) + "px";
+      }
+      var lg = holder.querySelector(".ov-legend");
+      if (lg) {
+        var lr = lg.getBoundingClientRect();
+        lg.style.paddingLeft = Math.max(0, Math.round(bb.left - lr.left)) + "px";
+      }
+
+      // Vertical title: sit exactly AXIS_GAP to the left of the value labels, so the
+      // gap matches the horizontal title's gap instead of being centred in the gutter.
+      var yt = holder.querySelector(".ov-ytitle");
+      if (yt) {
+        // NOTE: Carbon keeps a hidden duplicate set of tick labels for measurement,
+        // so take the VISIBLE set — the one whose right edge sits nearest the plot.
+        var rects = [];
+        Array.prototype.forEach.call(
+          holder.querySelectorAll(".axis.left .tick text"),
+          function (t) {
+            var r = t.getBoundingClientRect();
+            if (r.width > 0 && r.right <= bb.left + 1) rects.push(r);
+          }
+        );
+        if (rects.length) {
+          var maxRight = -Infinity;
+          rects.forEach(function (r) { maxRight = Math.max(maxRight, r.right); });
+          var minLeft = Infinity;
+          rects.forEach(function (r) {
+            if (r.right >= maxRight - 2) minLeft = Math.min(minLeft, r.left);
+          });
+          var hl = holder.getBoundingClientRect().left;
+          yt.style.left =
+            Math.max(0, Math.round(minLeft - hl) - AXIS_GAP - AXIS_TITLE_H) + "px";
+        }
+      }
     }
     // legend that never truncates the colour labels
-    function fullLegend() { return { enabled: true, truncation: { type: "none" } }; }
+    function fullLegend() { return { enabled: false }; }
 
     /* ---------- chart builders ---------- */
     function buildBar(horizontal) {
@@ -735,6 +792,7 @@
       if (chart && chart.destroy) { try { chart.destroy(); } catch (e) {} }
       chart = null;
       holder.innerHTML = "";
+      holder.style.paddingLeft = "";   // reset gutter from any previous cartesian render
 
       if (state.type === "stat") {
         holder.style.display = "none";
@@ -745,6 +803,7 @@
 
       stat.style.display = "none";
       holder.style.display = "block";
+      holder.style.position = "relative";
 
       if (state.type === "pie" || state.type === "donut") {
         holder.style.paddingTop = "8px";
@@ -761,11 +820,65 @@
       else if (state.type === "area") built = buildLineOrArea(true);
 
       if (built && built.Cls) {
+        var TFONT = "400 12px Arial, sans-serif";
+        // gutter = title band + the same 20px gap used under the horizontal title
+        var padL = state.yAxis ? (AXIS_TITLE_H + AXIS_GAP) : 0;
+        holder.style.paddingLeft = padL + "px";
+
+        // chart in normal flow at its natural height
         var mount = document.createElement("div");
-        mount.style.width = "100%";
-        mount.style.height = "100%";
+        mount.style.height = "460px";
         holder.appendChild(mount);
         chart = new built.Cls(mount, built.config);
+
+        // vertical axis title — rotated, in the left gutter, centred on the plot
+        if (state.yAxis) {
+          var yt = document.createElement("div");
+          yt.className = "ov-ytitle";
+          yt.style.cssText = "position:absolute;left:0;top:0;height:460px;width:" + AXIS_TITLE_H +
+            "px;display:flex;align-items:center;justify-content:center;";
+          var ys = document.createElement("span");
+          ys.textContent = state.yAxis.toUpperCase();
+          ys.style.cssText = "transform:rotate(-90deg);white-space:nowrap;font:" + TFONT +
+            ";letter-spacing:0.08em;color:#525252;";
+          yt.appendChild(ys);
+          holder.appendChild(yt);
+        }
+
+        // horizontal axis title — below the chart, 20px clear of it
+        if (state.xAxis) {
+          var xt = document.createElement("div");
+          xt.className = "ov-xtitle";
+          xt.textContent = state.xAxis.toUpperCase();
+          xt.style.cssText = "margin-top:" + AXIS_GAP + "px;text-align:center;font:" + TFONT +
+            ";letter-spacing:0.08em;color:#525252;";
+          holder.appendChild(xt);
+        }
+
+        // comparison legend — below, left-aligned to the plot's left edge
+        if (comparing()) {
+          var lg = document.createElement("div");
+          lg.className = "ov-legend";
+          lg.style.cssText = "margin-top:" + (state.xAxis ? 14 : 20) +
+            "px;display:flex;align-items:center;flex-wrap:wrap;gap:6px 18px;" +
+            "font:400 13px Arial,sans-serif;color:#404040;";
+          [[s1name(), SERIES1_COLOR], [s2name(), SERIES2_COLOR]].forEach(function (p) {
+            var item = document.createElement("span");
+            item.style.cssText = "display:inline-flex;align-items:center;gap:6px;";
+            var sw = document.createElement("span");
+            sw.style.cssText = "width:12px;height:12px;border-radius:2px;flex:none;background:" + p[1] + ";";
+            item.appendChild(sw);
+            item.appendChild(document.createTextNode(p[0]));
+            lg.appendChild(item);
+          });
+          holder.appendChild(lg);
+        }
+        // Carbon renders asynchronously, so align once now and again shortly after —
+        // a single pass can run before the tick labels exist.
+        requestAnimationFrame(function () { alignCartesianOverlays(holder); });
+        [60, 200, 500].forEach(function (ms) {
+          setTimeout(function () { alignCartesianOverlays(holder); }, ms);
+        });
       }
     }
 
@@ -838,7 +951,7 @@
       var fontsReady = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
       fontsReady.then(function () {
         var svg = card.querySelector("svg");
-        if (svg) { inlineChartStyles($("chart-holder")); }
+        if (svg) { alignCartesianOverlays($("chart-holder")); inlineChartStyles($("chart-holder")); }
         return window.htmlToImage.toPng(card, {
           pixelRatio: 2,
           backgroundColor: "#F3F3F3",
