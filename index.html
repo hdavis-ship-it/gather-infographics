@@ -213,11 +213,12 @@
     font-size: 19px;
     line-height: 1.35;
     color: var(--impact-black);
-    margin: 0 0 26px;
+    margin: 0 0 12px;
   }
   #chart-holder {
     width: 100%;
     height: 460px;
+    margin-top: 36px;          /* breathing room between title and chart */
     /* point Carbon's font at Merriweather */
     --cds-charts-font-family: 'Merriweather', serif;
     --cds-charts-font-family-condensed: 'Merriweather', serif;
@@ -234,29 +235,33 @@
     --cds-border-subtle-selected-01: #D3D3D3; /* grid lines = light gray */
     --cds-focus: #EE4B22;
   }
-  /* Stat-callout (non-Carbon) */
+  /* Stat-callout (non-Carbon) — up to three stats in a row */
   #stat {
     display: none;
-    padding: 30px 0 20px;
+    margin-top: 36px;
+    padding: 10px 0 6px;
+    gap: 44px;
+    align-items: flex-start;
   }
-  #stat .big {
+  .stat-tile { flex: 1 1 0; min-width: 0; }
+  .stat-tile.solo { flex: 0 1 auto; }
+  .stat-big {
     font-family: 'Merriweather', serif;
     font-weight: 700;
-    font-size: 150px;
     line-height: 1;
     color: var(--dark-orange);
     margin: 0;
     letter-spacing: -0.02em;
   }
-  #stat .big.blue { color: var(--signal-blue); }
-  #stat .label {
+  .stat-big.blue { color: var(--signal-blue); }
+  .stat-label {
     font-family: Arial, sans-serif;
     font-weight: 700;
-    font-size: 18px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--impact-black);
-    margin: 14px 0 0;
+    margin: 12px 0 0;
+    line-height: 1.25;
   }
   #card .footer {
     display: flex;
@@ -316,6 +321,12 @@
       <input type="text" id="in-subtitle" placeholder="One line of context under the title" />
     </div>
 
+    <div class="field" id="axis-field">
+      <label>Axis labels <span style="color:var(--better-gray);font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
+      <input type="text" id="in-xaxis" placeholder="Horizontal axis — e.g. Quarter, Years" style="margin-bottom:6px;" />
+      <input type="text" id="in-yaxis" placeholder="Vertical axis — e.g. Dollars, %" />
+    </div>
+
     <div class="field" id="compare-field">
       <label>Comparison <span style="color:var(--better-gray);font-weight:400;text-transform:none;letter-spacing:0">(bar &amp; line)</span></label>
       <div class="toggle-row">
@@ -371,10 +382,7 @@
 
         <div id="chart-holder"></div>
 
-        <div id="stat">
-          <p class="big" id="stat-big">—</p>
-          <p class="label" id="stat-label"></p>
-        </div>
+        <div id="stat"></div>
 
         <div class="footer">
           <p class="source" id="c-source"></p>
@@ -397,6 +405,8 @@
     "use strict";
 
     var RAMP = ["#980000", "#EE4B22", "#F16F4E", "#F5937A", "#F8B7A7", "#FCDBD3"];
+    // stat tiles step: Dark Orange -> Progress Orange -> Progress Orange 60
+    var STAT_RAMP = ["#980000", "#EE4B22", "#F5937A"];
     var SIGNAL_BLUE = "#64A4E9";
     var ORANGE = "#EE4B22";
 
@@ -411,6 +421,8 @@
       compare: false,
       series1: "This year",
       series2: "Last year",
+      xAxis: "",
+      yAxis: "",
       rows: [
         { label: "Design", value: 42, value2: 36 },
         { label: "Data", value: 28, value2: 22 },
@@ -497,15 +509,25 @@
       return scale;
     }
 
+    /* apply the horizontal/vertical axis titles onto Carbon axes (bottom = horizontal,
+       left = vertical), regardless of chart orientation */
+    function applyAxisTitles(axes) {
+      if (state.xAxis && axes.bottom) axes.bottom.title = state.xAxis;
+      if (state.yAxis && axes.left) axes.left.title = state.yAxis;
+      return axes;
+    }
+    // legend that never truncates the colour labels
+    function fullLegend() { return { enabled: true, truncation: { type: "none" } }; }
+
     /* ---------- chart builders ---------- */
     function buildBar(horizontal) {
       var data = state.rows.map(function (r) { return { group: r.label, value: r.value }; });
       var valueAxis = { mapsTo: "value" };
       var labelAxis = { mapsTo: "group", scaleType: "labels" };
       var options = {
-        axes: horizontal
+        axes: applyAxisTitles(horizontal
           ? { left: labelAxis, bottom: valueAxis }
-          : { left: valueAxis, bottom: labelAxis },
+          : { left: valueAxis, bottom: labelAxis }),
         legend: { enabled: false },
         color: { scale: colorScaleByLabel() },
         toolbar: { enabled: false },
@@ -520,10 +542,10 @@
         return { group: "Series", key: r.label, value: r.value };
       });
       var options = {
-        axes: {
+        axes: applyAxisTitles({
           bottom: { mapsTo: "key", scaleType: "labels" },
           left: { mapsTo: "value" }
-        },
+        }),
         legend: { enabled: false },
         color: { scale: { "Series": ORANGE } },
         points: { radius: 4 },
@@ -552,10 +574,10 @@
       var valueAxis = { mapsTo: "value" };
       var labelAxis = { mapsTo: "key", scaleType: "labels" };
       var options = {
-        axes: horizontal
+        axes: applyAxisTitles(horizontal
           ? { left: labelAxis, bottom: valueAxis }
-          : { left: valueAxis, bottom: labelAxis },
-        legend: { enabled: true },
+          : { left: valueAxis, bottom: labelAxis }),
+        legend: fullLegend(),
         color: { scale: seriesColorScale() },
         toolbar: { enabled: false },
         height: "460px",
@@ -572,11 +594,11 @@
         data.push({ group: s2, key: r.label, value: parseFloat(r.value2) || 0 });
       });
       var options = {
-        axes: {
+        axes: applyAxisTitles({
           bottom: { mapsTo: "key", scaleType: "labels" },
           left: { mapsTo: "value" }
-        },
-        legend: { enabled: true },
+        }),
+        legend: fullLegend(),
         color: { scale: seriesColorScale() },
         points: { radius: 4 },
         toolbar: { enabled: false },
@@ -655,6 +677,44 @@
       holder.appendChild(leg);
     }
 
+    /* ---------- stat callout: up to three stats in a row ---------- */
+    function renderStats(container) {
+      container.innerHTML = "";
+      var items = state.rows.slice(0, 3);
+      if (items.length === 0) items = [{ label: "", value: "" }];
+      var n = items.length;
+      var bigSize = n <= 1 ? 140 : (n === 2 ? 104 : 78);
+      var labelSize = n <= 1 ? 18 : 15;
+      items.forEach(function (r, i) {
+        var tile = document.createElement("div");
+        tile.className = "stat-tile" + (n === 1 ? " solo" : "");
+        var big = document.createElement("p");
+        big.className = "stat-big";
+        big.style.fontSize = bigSize + "px";
+        big.style.color = (state.highlight === i) ? SIGNAL_BLUE : STAT_RAMP[i % STAT_RAMP.length];
+        big.textContent = (r.value === "" || r.value == null) ? "—" : r.value;
+        var lab = document.createElement("p");
+        lab.className = "stat-label";
+        lab.style.fontSize = labelSize + "px";
+        lab.textContent = r.label || "";
+        tile.appendChild(big); tile.appendChild(lab);
+        container.appendChild(tile);
+      });
+    }
+
+    /* ---------- source line: colour any URL Progress Orange (reads as a link) ---------- */
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+    function linkifySource(text) {
+      return escapeHtml(text).replace(
+        /((?:https?:\/\/|www\.)[^\s]+|[a-z0-9.\-]+\.(?:com|org|net|io|co|gov|edu|us|uk|ai)(?:\/[^\s]*)?)/gi,
+        function (m) { return '<span style="color:#EE4B22;text-decoration:underline;">' + m + "</span>"; }
+      );
+    }
+
     /* ---------- master render ---------- */
     function render() {
       // text bits
@@ -664,7 +724,7 @@
       $("c-title").style.display = state.title ? "block" : "none";
       $("c-subtitle").textContent = state.subtitle;
       $("c-subtitle").style.display = state.subtitle ? "block" : "none";
-      $("c-source").textContent = state.source;
+      $("c-source").innerHTML = state.source ? linkifySource(state.source) : "";
       $("c-wordmark").className = "wordmark" + (state.wordmark ? "" : " hidden");
 
       var holder = $("chart-holder");
@@ -678,11 +738,8 @@
 
       if (state.type === "stat") {
         holder.style.display = "none";
-        stat.style.display = "block";
-        var r0 = state.rows[0] || { label: "", value: 0 };
-        $("stat-big").textContent = (r0.value === "" ? "—" : r0.value);
-        $("stat-big").className = "big" + (state.highlight === 0 ? " blue" : "");
-        $("stat-label").textContent = r0.label || "";
+        stat.style.display = "flex";
+        renderStats(stat);
         return;
       }
 
@@ -722,6 +779,9 @@
       $("compare-field").style.display = compareAllowed() ? "" : "none";
       $("series-names").style.display = (state.compare && compareAllowed()) ? "block" : "none";
       $("data-hint").style.display = comparing() ? "none" : "";
+      // axis labels only apply to cartesian charts
+      $("axis-field").style.display =
+        (["bar", "barh", "line", "area"].indexOf(state.type) !== -1) ? "" : "none";
     }
 
     /* ---------- paste parsing ---------- */
@@ -841,6 +901,8 @@
       $("in-cat").oninput = function () { state.cat = this.value; render(); };
       $("in-title").oninput = function () { state.title = this.value; render(); };
       $("in-subtitle").oninput = function () { state.subtitle = this.value; render(); };
+      $("in-xaxis").oninput = function () { state.xAxis = this.value; render(); };
+      $("in-yaxis").oninput = function () { state.yAxis = this.value; render(); };
       $("in-source").oninput = function () { state.source = this.value; render(); };
       $("in-wordmark").onchange = function () { state.wordmark = this.checked; render(); };
 
