@@ -1,0 +1,8 @@
+Add your two official Gather Signal wordmark PNGs to THIS folder, named exactly:
+
+  signal-wordmark-black.png   (the Impact Black wordmark, for the light card)
+  signal-wordmark-white.png   (the reverse/white wordmark - optional, for future dark cards)
+
+The tool looks for signal-wordmark-black.png and stamps it in the lower-right of every export.
+Until you add it, exports simply omit the wordmark (nothing breaks).
+Do NOT rename or recreate the wordmark - use your official PNG files.

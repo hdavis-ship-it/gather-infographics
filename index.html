@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gather Signal — Infographic Maker</title>
+
+<!-- Merriweather (brand serif). Arial is a system font. -->
+
+
+<link href="fonts/fonts.css" rel="stylesheet" />
+
+<!-- Carbon Charts styles -->
+<link rel="stylesheet" href="vendor/carbon-charts.css" />
+
+<style>
+  :root {
+    /* Gather Signal palette */
+    --dark-orange: #980000;
+    --orange:      #EE4B22;
+    --orange-80:   #F16F4E;
+    --orange-60:   #F5937A;
+    --orange-40:   #F8B7A7;
+    --orange-20:   #FCDBD3;
+    --impact-black:#404040;
+    --better-gray: #A5A5A5;
+    --indep-white: #F3F3F3;
+    --pure-white:  #FFFFFF;
+    --signal-blue: #64A4E9;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    color: var(--impact-black);
+    background: var(--pure-white);
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    min-height: 100vh;
+  }
+
+  /* ---------- Controls panel ---------- */
+  .panel {
+    background: var(--indep-white);
+    border-right: 1px solid #e2e2e2;
+    padding: 24px 22px 60px;
+    overflow-y: auto;
+    height: 100vh;
+  }
+  .panel h1 {
+    font-family: 'Merriweather', serif;
+    font-weight: 300;
+    font-size: 20px;
+    margin: 0 0 2px;
+  }
+  .panel .sub {
+    font-size: 11px;
+    color: var(--better-gray);
+    margin: 0 0 22px;
+    line-height: 1.4;
+  }
+  .field { margin-bottom: 18px; }
+  .field > label {
+    display: block;
+    font-family: Arial, sans-serif;
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--orange);
+    margin-bottom: 6px;
+  }
+  input[type="text"], textarea, select {
+    width: 100%;
+    padding: 8px 9px;
+    border: 1px solid #d3d3d3;
+    border-radius: 4px;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    color: var(--impact-black);
+    background: var(--pure-white);
+  }
+  textarea { resize: vertical; min-height: 64px; line-height: 1.4; }
+  select { cursor: pointer; }
+
+  .type-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .type-grid button {
+    font-family: Arial, sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 9px 4px;
+    border: 1px solid #d3d3d3;
+    border-radius: 4px;
+    background: var(--pure-white);
+    color: var(--impact-black);
+    cursor: pointer;
+    transition: all .12s ease;
+  }
+  .type-grid button:hover { border-color: var(--orange-60); }
+  .type-grid button.active {
+    background: var(--orange);
+    border-color: var(--orange);
+    color: var(--pure-white);
+  }
+
+  /* data rows */
+  .rows { display: flex; flex-direction: column; gap: 6px; }
+  .row {
+    display: grid;
+    grid-template-columns: 1fr 78px 26px 26px;
+    gap: 5px;
+    align-items: center;
+  }
+  .row input { padding: 6px 8px; font-size: 12px; }
+  .row .hl, .row .del {
+    border: 1px solid #d3d3d3;
+    background: var(--pure-white);
+    border-radius: 4px;
+    height: 30px;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    padding: 0;
+    color: var(--better-gray);
+  }
+  .row .hl.on {
+    background: var(--signal-blue);
+    border-color: var(--signal-blue);
+    color: #fff;
+  }
+  .row .del:hover { color: var(--dark-orange); border-color: var(--dark-orange); }
+  .mini-btn {
+    margin-top: 8px;
+    font-family: Arial, sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: .04em;
+    background: none;
+    border: 1px dashed var(--better-gray);
+    color: var(--impact-black);
+    border-radius: 4px;
+    padding: 7px;
+    width: 100%;
+    cursor: pointer;
+  }
+  .mini-btn:hover { border-color: var(--orange); color: var(--orange); }
+  .hint { font-size: 10.5px; color: var(--better-gray); margin-top: 6px; line-height: 1.4; }
+
+  .toggle-row {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: var(--impact-black);
+  }
+  .download {
+    width: 100%;
+    margin-top: 8px;
+    background: var(--dark-orange);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 13px;
+    font-family: Arial, sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: .04em;
+    cursor: pointer;
+  }
+  .download:hover { background: #7e0000; }
+
+  /* ---------- Preview / card ---------- */
+  .stage {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px;
+    overflow: auto;
+    height: 100vh;
+  }
+  .card-scaler { transform-origin: top center; }
+
+  /* THE EXPORT TARGET */
+  #card {
+    width: 1000px;
+    background: var(--indep-white);
+    padding: 80px;                 /* 80px on all sides, per spec */
+    font-family: Arial, sans-serif;
+  }
+  #card .cat {
+    font-family: Arial, sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--orange);
+    margin: 0 0 10px;
+  }
+  #card .title {
+    font-family: 'Merriweather', serif;
+    font-weight: 300;
+    font-size: 40px;
+    line-height: 1.2;
+    color: var(--impact-black);
+    margin: 0 0 8px;
+  }
+  #card .subtitle {
+    font-family: 'Merriweather', serif;
+    font-weight: 300;
+    font-size: 19px;
+    line-height: 1.35;
+    color: var(--impact-black);
+    margin: 0 0 26px;
+  }
+  #chart-holder {
+    width: 100%;
+    height: 460px;
+    /* point Carbon's font at Merriweather */
+    --cds-charts-font-family: 'Merriweather', serif;
+    --cds-charts-font-family-condensed: 'Merriweather', serif;
+  }
+  /* Carbon Charts reads these design tokens for backgrounds, axes, and text.
+     Without them it falls back to a black plot area. Map them to Signal. */
+  #card {
+    --cds-background: #F3F3F3;           /* plot area = Independent White (seamless) */
+    --cds-layer-01: #F3F3F3;
+    --cds-layer-accent-01: #E4E4E4;
+    --cds-text-primary: #404040;         /* Impact Black labels */
+    --cds-text-secondary: #404040;
+    --cds-border-strong-01: #A5A5A5;     /* axis lines = Better Gray */
+    --cds-border-subtle-selected-01: #D3D3D3; /* grid lines = light gray */
+    --cds-focus: #EE4B22;
+  }
+  /* Stat-callout (non-Carbon) */
+  #stat {
+    display: none;
+    padding: 30px 0 20px;
+  }
+  #stat .big {
+    font-family: 'Merriweather', serif;
+    font-weight: 700;
+    font-size: 150px;
+    line-height: 1;
+    color: var(--dark-orange);
+    margin: 0;
+    letter-spacing: -0.02em;
+  }
+  #stat .big.blue { color: var(--signal-blue); }
+  #stat .label {
+    font-family: Arial, sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--impact-black);
+    margin: 14px 0 0;
+  }
+  #card .footer {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-top: 30px;
+    padding-top: 16px;
+    border-top: 1px solid var(--orange);
+    gap: 20px;
+  }
+  #card .source {
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    color: var(--better-gray);
+    margin: 0;
+    line-height: 1.4;
+  }
+  #card .wordmark { height: 34px; flex: none; }
+  #card .wordmark img { height: 100%; display: block; }
+  #card .wordmark.hidden { display: none; }
+
+  /* Hide Carbon's default toolbar entirely */
+  .cds--cc--toolbar { display: none !important; }
+</style>
+</head>
+<body>
+
+  <!-- ===================== CONTROLS ===================== -->
+  <aside class="panel">
+    <h1>Gather Signal</h1>
+    <p class="sub">Infographic maker · make an on-brand chart, download a PNG</p>
+
+    <div class="field">
+      <label>Chart type</label>
+      <div class="type-grid" id="type-grid">
+        <button data-type="bar" class="active">Bar</button>
+        <button data-type="barh">Bar (horiz.)</button>
+        <button data-type="line">Line</button>
+        <button data-type="pie">Pie</button>
+        <button data-type="donut">Donut</button>
+        <button data-type="area">Area</button>
+        <button data-type="stat">Stat</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Category label <span style="color:var(--better-gray);font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
+      <input type="text" id="in-cat" placeholder="e.g. EPISODE 12 · BY THE NUMBERS" />
+    </div>
+
+    <div class="field">
+      <label>Title</label>
+      <input type="text" id="in-title" placeholder="Where Gatherers spend their week" />
+    </div>
+
+    <div class="field">
+      <label>Subtitle <span style="color:var(--better-gray);font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
+      <input type="text" id="in-subtitle" placeholder="One line of context under the title" />
+    </div>
+
+    <div class="field">
+      <label>Data</label>
+      <div class="rows" id="rows"></div>
+      <button class="mini-btn" id="add-row">+ Add row</button>
+      <p class="hint">Click the ◈ on a row to highlight that one point in Signal Blue. (Bar, pie, donut &amp; stat.)</p>
+    </div>
+
+    <div class="field">
+      <label>Paste from a spreadsheet <span style="color:var(--better-gray);font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
+      <textarea id="in-paste" placeholder="Label &lt;tab or comma&gt; value, one per line&#10;Design	42&#10;Data	28&#10;Ops	17"></textarea>
+      <button class="mini-btn" id="apply-paste">Fill rows from paste</button>
+    </div>
+
+    <div class="field">
+      <label>Source line <span style="color:var(--better-gray);font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
+      <input type="text" id="in-source" placeholder="Source: Gather Signal listener survey, 2026" />
+    </div>
+
+    <div class="field">
+      <label>Wordmark</label>
+      <div class="toggle-row">
+        <input type="checkbox" id="in-wordmark" checked />
+        <label for="in-wordmark" style="font-weight:400;font-size:12px;text-transform:none;letter-spacing:0;color:var(--impact-black);margin:0;">Show Signal wordmark on export</label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Export</label>
+      <button class="download" id="download">Download PNG</button>
+      <p class="hint" id="export-note"></p>
+    </div>
+  </aside>
+
+  <!-- ===================== PREVIEW ===================== -->
+  <main class="stage">
+    <div class="card-scaler" id="scaler">
+      <div id="card">
+        <p class="cat" id="c-cat"></p>
+        <h2 class="title" id="c-title"></h2>
+        <p class="subtitle" id="c-subtitle"></p>
+
+        <div id="chart-holder"></div>
+
+        <div id="stat">
+          <p class="big" id="stat-big">—</p>
+          <p class="label" id="stat-label"></p>
+        </div>
+
+        <div class="footer">
+          <p class="source" id="c-source"></p>
+          <div class="wordmark" id="c-wordmark">
+            <img src="assets/signal-wordmark-black.png" alt="Gather Signal wordmark"
+                 onerror="this.parentNode.dataset.missing='1'; this.remove();" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Carbon Charts (UMD → window.Charts). d3 is bundled in this build. -->
+  <script src="vendor/carbon-charts.umd.js"></script>
+  <!-- html-to-image (UMD → window.htmlToImage) -->
+  <script src="vendor/html-to-image.js"></script>
+
+  <script>
+  (function () {
+    "use strict";
+
+    var RAMP = ["#980000", "#EE4B22", "#F16F4E", "#F5937A", "#F8B7A7", "#FCDBD3"];
+    var SIGNAL_BLUE = "#64A4E9";
+    var ORANGE = "#EE4B22";
+
+    var state = {
+      type: "bar",
+      cat: "",
+      title: "Where Gatherers spend their week",
+      subtitle: "",
+      source: "",
+      wordmark: true,
+      highlight: -1,
+      rows: [
+        { label: "Design", value: 42 },
+        { label: "Data", value: 28 },
+        { label: "Ops", value: 17 },
+        { label: "Content", value: 13 }
+      ]
+    };
+
+    var chart = null;
+    var $ = function (id) { return document.getElementById(id); };
+
+    /* ---------- data rows UI ---------- */
+    function renderRows() {
+      var wrap = $("rows");
+      wrap.innerHTML = "";
+      state.rows.forEach(function (r, i) {
+        var row = document.createElement("div");
+        row.className = "row";
+
+        var lab = document.createElement("input");
+        lab.type = "text"; lab.value = r.label; lab.placeholder = "Label";
+        lab.oninput = function () { state.rows[i].label = lab.value; render(); };
+
+        var val = document.createElement("input");
+        val.type = "text"; val.value = r.value; val.placeholder = "0";
+        val.oninput = function () {
+          var n = parseFloat(val.value.replace(/[^0-9.\-]/g, ""));
+          state.rows[i].value = isNaN(n) ? 0 : n; render();
+        };
+
+        var hl = document.createElement("button");
+        hl.className = "hl" + (state.highlight === i ? " on" : "");
+        hl.title = "Highlight in Signal Blue";
+        hl.innerHTML = "&#9670;";
+        hl.onclick = function () {
+          state.highlight = (state.highlight === i) ? -1 : i; renderRows(); render();
+        };
+
+        var del = document.createElement("button");
+        del.className = "del"; del.title = "Remove row"; del.innerHTML = "&times;";
+        del.onclick = function () {
+          state.rows.splice(i, 1);
+          if (state.highlight === i) state.highlight = -1;
+          else if (state.highlight > i) state.highlight--;
+          renderRows(); render();
+        };
+
+        row.appendChild(lab); row.appendChild(val); row.appendChild(hl); row.appendChild(del);
+        wrap.appendChild(row);
+      });
+    }
+
+    /* ---------- colour scale ---------- */
+    function colorScaleByLabel() {
+      var scale = {};
+      state.rows.forEach(function (r, i) {
+        scale[r.label] = (i === state.highlight) ? SIGNAL_BLUE : RAMP[i % RAMP.length];
+      });
+      return scale;
+    }
+
+    /* ---------- chart builders ---------- */
+    function buildBar(horizontal) {
+      var data = state.rows.map(function (r) { return { group: r.label, value: r.value }; });
+      var valueAxis = { mapsTo: "value" };
+      var labelAxis = { mapsTo: "group", scaleType: "labels" };
+      var options = {
+        axes: horizontal
+          ? { left: labelAxis, bottom: valueAxis }
+          : { left: valueAxis, bottom: labelAxis },
+        legend: { enabled: false },
+        color: { scale: colorScaleByLabel() },
+        toolbar: { enabled: false },
+        height: "460px",
+        grid: { x: { enabled: false } }
+      };
+      return { Cls: window.Charts.SimpleBarChart, config: { data: data, options: options } };
+    }
+
+    function buildLineOrArea(isArea) {
+      var data = state.rows.map(function (r) {
+        return { group: "Series", key: r.label, value: r.value };
+      });
+      var options = {
+        axes: {
+          bottom: { mapsTo: "key", scaleType: "labels" },
+          left: { mapsTo: "value" }
+        },
+        legend: { enabled: false },
+        color: { scale: { "Series": ORANGE } },
+        points: { radius: 4 },
+        toolbar: { enabled: false },
+        height: "460px"
+      };
+      var Cls = isArea ? window.Charts.AreaChart : window.Charts.LineChart;
+      return { Cls: Cls, config: { data: data, options: options } };
+    }
+
+    /* Pie & donut are hand-drawn as clean SVG (Carbon's radial charts do not
+       rasterize reliably for PNG export). Full brand control, always exports. */
+    var SVGNS = "http://www.w3.org/2000/svg";
+    function svgEl(tag, attrs) {
+      var e = document.createElementNS(SVGNS, tag);
+      for (var k in attrs) { if (attrs.hasOwnProperty(k)) e.setAttribute(k, attrs[k]); }
+      return e;
+    }
+    function renderPieDonut(holder, isDonut) {
+      var W = 840, H = 412, cx = W / 2, cy = 196, R = 168;
+      var innerR = isDonut ? R * 0.60 : 0;
+      var total = 0;
+      state.rows.forEach(function (r) { var v = parseFloat(r.value) || 0; if (v > 0) total += v; });
+      if (total <= 0) total = 1;
+
+      var svg = svgEl("svg", { width: W, height: H, viewBox: "0 0 " + W + " " + H });
+      var a0 = -Math.PI / 2;
+      state.rows.forEach(function (r, i) {
+        var v = parseFloat(r.value) || 0;
+        if (v <= 0) return;
+        var frac = v / total, a1 = a0 + frac * 2 * Math.PI, mid = (a0 + a1) / 2;
+        var large = (a1 - a0) > Math.PI ? 1 : 0;
+        var color = (i === state.highlight) ? SIGNAL_BLUE : RAMP[i % RAMP.length];
+        var xo0 = cx + R * Math.cos(a0), yo0 = cy + R * Math.sin(a0);
+        var xo1 = cx + R * Math.cos(a1), yo1 = cy + R * Math.sin(a1);
+        var d;
+        if (innerR > 0) {
+          var xi1 = cx + innerR * Math.cos(a1), yi1 = cy + innerR * Math.sin(a1);
+          var xi0 = cx + innerR * Math.cos(a0), yi0 = cy + innerR * Math.sin(a0);
+          d = "M " + xo0 + " " + yo0 + " A " + R + " " + R + " 0 " + large + " 1 " + xo1 + " " + yo1 +
+              " L " + xi1 + " " + yi1 + " A " + innerR + " " + innerR + " 0 " + large + " 0 " + xi0 + " " + yi0 + " Z";
+        } else {
+          d = "M " + cx + " " + cy + " L " + xo0 + " " + yo0 +
+              " A " + R + " " + R + " 0 " + large + " 1 " + xo1 + " " + yo1 + " Z";
+        }
+        svg.appendChild(svgEl("path", { d: d, fill: color, stroke: "#F3F3F3", "stroke-width": "2" }));
+        // percentage label just outside the ring
+        var lx = cx + (R + 26) * Math.cos(mid), ly = cy + (R + 26) * Math.sin(mid);
+        var t = svgEl("text", { x: lx, y: ly, "text-anchor": "middle", "dominant-baseline": "middle",
+                                "font-family": "Arial, sans-serif", "font-size": "14", fill: "#404040" });
+        t.textContent = Math.round(frac * 100) + "%";
+        svg.appendChild(t);
+        a0 = a1;
+      });
+      if (isDonut) {
+        var num = svgEl("text", { x: cx, y: cy, "text-anchor": "middle", "dominant-baseline": "central",
+                                  "font-family": "'Merriweather', serif", "font-size": "46", fill: "#404040" });
+        num.textContent = String(Math.round(total * 100) / 100);
+        svg.appendChild(num);
+      }
+      holder.appendChild(svg);
+
+      // legend as HTML (exports reliably, easy to center)
+      var leg = document.createElement("div");
+      leg.style.cssText = "display:flex;flex-wrap:wrap;justify-content:center;gap:8px 18px;margin-top:6px;" +
+                          "font-family:Arial,sans-serif;font-size:13px;color:#404040;";
+      state.rows.forEach(function (r, i) {
+        var v = parseFloat(r.value) || 0; if (v <= 0) return;
+        var item = document.createElement("span");
+        item.style.cssText = "display:inline-flex;align-items:center;gap:6px;";
+        var sw = document.createElement("span");
+        sw.style.cssText = "width:12px;height:12px;border-radius:2px;flex:none;background:" +
+                           ((i === state.highlight) ? SIGNAL_BLUE : RAMP[i % RAMP.length]) + ";";
+        item.appendChild(sw);
+        item.appendChild(document.createTextNode(r.label || ""));
+        leg.appendChild(item);
+      });
+      holder.appendChild(leg);
+    }
+
+    /* ---------- master render ---------- */
+    function render() {
+      // text bits
+      $("c-cat").textContent = state.cat;
+      $("c-cat").style.display = state.cat ? "block" : "none";
+      $("c-title").textContent = state.title;
+      $("c-title").style.display = state.title ? "block" : "none";
+      $("c-subtitle").textContent = state.subtitle;
+      $("c-subtitle").style.display = state.subtitle ? "block" : "none";
+      $("c-source").textContent = state.source;
+      $("c-wordmark").className = "wordmark" + (state.wordmark ? "" : " hidden");
+
+      var holder = $("chart-holder");
+      var stat = $("stat");
+
+      // tear down previous chart. NOTE: Carbon's destroy() removes the node it
+      // was mounted on, so we mount into a throwaway child and keep #chart-holder stable.
+      if (chart && chart.destroy) { try { chart.destroy(); } catch (e) {} }
+      chart = null;
+      holder.innerHTML = "";
+
+      if (state.type === "stat") {
+        holder.style.display = "none";
+        stat.style.display = "block";
+        var r0 = state.rows[0] || { label: "", value: 0 };
+        $("stat-big").textContent = (r0.value === "" ? "—" : r0.value);
+        $("stat-big").className = "big" + (state.highlight === 0 ? " blue" : "");
+        $("stat-label").textContent = r0.label || "";
+        return;
+      }
+
+      stat.style.display = "none";
+      holder.style.display = "block";
+
+      if (state.type === "pie" || state.type === "donut") {
+        holder.style.paddingTop = "8px";
+        renderPieDonut(holder, state.type === "donut");
+        return;
+      }
+      holder.style.paddingTop = "";
+
+      var built;
+      if (state.type === "bar") built = buildBar(false);
+      else if (state.type === "barh") built = buildBar(true);
+      else if (state.type === "line") built = buildLineOrArea(false);
+      else if (state.type === "area") built = buildLineOrArea(true);
+
+      if (built && built.Cls) {
+        var mount = document.createElement("div");
+        mount.style.width = "100%";
+        mount.style.height = "100%";
+        holder.appendChild(mount);
+        chart = new built.Cls(mount, built.config);
+      }
+    }
+
+    /* ---------- highlight availability ---------- */
+    function highlightAllowed() {
+      return ["bar", "barh", "pie", "donut", "stat"].indexOf(state.type) !== -1;
+    }
+
+    /* ---------- paste parsing ---------- */
+    function applyPaste() {
+      var raw = $("in-paste").value.trim();
+      if (!raw) return;
+      var lines = raw.split(/\r?\n/);
+      var out = [];
+      lines.forEach(function (ln) {
+        if (!ln.trim()) return;
+        var parts = ln.split(/\t|,/);
+        if (parts.length < 2) {
+          // maybe "Label 42" separated by spaces
+          var m = ln.match(/^(.*?)[\s]+([\-0-9.]+)\s*$/);
+          if (m) parts = [m[1], m[2]];
+        }
+        var label = (parts[0] || "").trim();
+        var num = parseFloat((parts[1] || "").replace(/[^0-9.\-]/g, ""));
+        if (label) out.push({ label: label, value: isNaN(num) ? 0 : num });
+      });
+      if (out.length) {
+        state.rows = out;
+        state.highlight = -1;
+        renderRows(); render();
+      }
+    }
+
+    /* Carbon styles its SVG via an external stylesheet + CSS variables, which do
+       NOT survive rasterization (the plot area goes black in the PNG). Fix: copy
+       each SVG node's *computed* presentation styles onto the node as inline
+       attributes so concrete values travel into the export. */
+    function inlineChartStyles(root) {
+      var props = ["fill", "fill-opacity", "stroke", "stroke-width",
+                   "stroke-opacity", "stroke-dasharray", "opacity",
+                   "font-family", "font-size", "font-weight", "text-anchor"];
+      var nodes = root.querySelectorAll("svg, svg *");
+      Array.prototype.forEach.call(nodes, function (el) {
+        var cs = window.getComputedStyle(el);
+        var extra = "";
+        props.forEach(function (p) {
+          var v = cs.getPropertyValue(p);
+          if (v && v !== "" && v !== "normal") { extra += p + ":" + v + ";"; }
+        });
+        el.setAttribute("style", (el.getAttribute("style") || "") + extra);
+      });
+    }
+
+    /* ---------- PNG export ---------- */
+    function download() {
+      var note = $("export-note");
+      var card = $("card");
+      note.textContent = "Rendering PNG…";
+      // fonts must be ready before rasterizing
+      var fontsReady = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
+      fontsReady.then(function () {
+        var svg = card.querySelector("svg");
+        if (svg) { inlineChartStyles($("chart-holder")); }
+        return window.htmlToImage.toPng(card, {
+          pixelRatio: 2,
+          backgroundColor: "#F3F3F3",
+          cacheBust: true,
+          filter: function (node) {
+            // never let a broken/unloaded <img> (e.g. a missing wordmark) break the export
+            if (node && node.tagName === "IMG" && (!node.complete || node.naturalWidth === 0)) return false;
+            return true;
+          }
+        });
+      }).then(function (dataUrl) {
+        var a = document.createElement("a");
+        var safe = (state.title || "gather-signal-infographic")
+          .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        a.download = (safe || "gather-signal-infographic") + ".png";
+        a.href = dataUrl;
+        a.click();
+        note.textContent = "Downloaded.";
+        setTimeout(function () { note.textContent = ""; }, 2500);
+      }).catch(function (err) {
+        note.textContent = "Export failed: " + (err && err.message ? err.message : err);
+      });
+    }
+
+    /* ---------- responsive scale of preview ---------- */
+    function fitPreview() {
+      var scaler = $("scaler");
+      var stage = scaler.parentNode;
+      var avail = stage.clientWidth - 80;
+      var scale = Math.min(1, avail / 1000);
+      scaler.style.transform = "scale(" + scale + ")";
+    }
+
+    /* ---------- wire up ---------- */
+    function init() {
+      // type buttons
+      Array.prototype.forEach.call($("type-grid").children, function (btn) {
+        btn.onclick = function () {
+          Array.prototype.forEach.call($("type-grid").children, function (b) { b.classList.remove("active"); });
+          btn.classList.add("active");
+          state.type = btn.dataset.type;
+          if (!highlightAllowed()) state.highlight = -1;
+          renderRows(); render();
+        };
+      });
+
+      $("in-cat").oninput = function () { state.cat = this.value; render(); };
+      $("in-title").oninput = function () { state.title = this.value; render(); };
+      $("in-subtitle").oninput = function () { state.subtitle = this.value; render(); };
+      $("in-source").oninput = function () { state.source = this.value; render(); };
+      $("in-wordmark").onchange = function () { state.wordmark = this.checked; render(); };
+
+      $("add-row").onclick = function () {
+        state.rows.push({ label: "New", value: 0 }); renderRows(); render();
+      };
+      $("apply-paste").onclick = applyPaste;
+      $("download").onclick = download;
+
+      // seed inputs from state
+      $("in-title").value = state.title;
+
+      renderRows();
+      render();
+      fitPreview();
+      window.addEventListener("resize", fitPreview);
+
+      // wordmark-missing note
+      setTimeout(function () {
+        if ($("c-wordmark").dataset.missing === "1") {
+          $("export-note").textContent = "Note: add your wordmark PNG at assets/signal-wordmark-black.png.";
+        }
+      }, 800);
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", init);
+    } else { init(); }
+  })();
+  </script>
+</body>
+</html>
