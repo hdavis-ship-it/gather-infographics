@@ -262,9 +262,8 @@
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
-    margin-top: 30px;
-    padding-top: 16px;
-    border-top: 1px solid var(--orange);
+    margin-top: 28px;
+    padding-top: 0;
     gap: 20px;
   }
   #card .source {
@@ -317,11 +316,23 @@
       <input type="text" id="in-subtitle" placeholder="One line of context under the title" />
     </div>
 
+    <div class="field" id="compare-field">
+      <label>Comparison <span style="color:var(--better-gray);font-weight:400;text-transform:none;letter-spacing:0">(bar &amp; line)</span></label>
+      <div class="toggle-row">
+        <input type="checkbox" id="in-compare" />
+        <label for="in-compare" style="font-weight:400;font-size:12px;text-transform:none;letter-spacing:0;color:var(--impact-black);margin:0;">Compare a second data set</label>
+      </div>
+      <div id="series-names" style="display:none;margin-top:8px;">
+        <input type="text" id="in-series1" placeholder="First set name (orange)" style="margin-bottom:6px;" />
+        <input type="text" id="in-series2" placeholder="Second set name (blue)" />
+      </div>
+    </div>
+
     <div class="field">
       <label>Data</label>
       <div class="rows" id="rows"></div>
       <button class="mini-btn" id="add-row">+ Add row</button>
-      <p class="hint">Click the ◈ on a row to highlight that one point in Signal Blue. (Bar, pie, donut &amp; stat.)</p>
+      <p class="hint" id="data-hint">Click the ◈ on a row to highlight that one point in Signal Blue. (Bar, pie, donut &amp; stat.)</p>
     </div>
 
     <div class="field">
@@ -397,13 +408,24 @@
       source: "",
       wordmark: true,
       highlight: -1,
+      compare: false,
+      series1: "This year",
+      series2: "Last year",
       rows: [
-        { label: "Design", value: 42 },
-        { label: "Data", value: 28 },
-        { label: "Ops", value: 17 },
-        { label: "Content", value: 13 }
+        { label: "Design", value: 42, value2: 36 },
+        { label: "Data", value: 28, value2: 22 },
+        { label: "Ops", value: 17, value2: 20 },
+        { label: "Content", value: 13, value2: 15 }
       ]
     };
+
+    // series colors when comparing two datasets (orange vs Signal Blue)
+    var SERIES1_COLOR = "#EE4B22";
+    var SERIES2_COLOR = "#64A4E9";
+    function s1name() { return state.series1 || "Series 1"; }
+    function s2name() { return state.series2 || "Series 2"; }
+    function compareAllowed() { return ["bar", "barh", "line"].indexOf(state.type) !== -1; }
+    function comparing() { return state.compare && compareAllowed(); }
 
     var chart = null;
     var $ = function (id) { return document.getElementById(id); };
@@ -412,9 +434,11 @@
     function renderRows() {
       var wrap = $("rows");
       wrap.innerHTML = "";
+      var cmp = comparing();
       state.rows.forEach(function (r, i) {
         var row = document.createElement("div");
         row.className = "row";
+        row.style.gridTemplateColumns = cmp ? "1fr 58px 58px 26px" : "1fr 78px 26px 26px";
 
         var lab = document.createElement("input");
         lab.type = "text"; lab.value = r.label; lab.placeholder = "Label";
@@ -422,18 +446,33 @@
 
         var val = document.createElement("input");
         val.type = "text"; val.value = r.value; val.placeholder = "0";
+        val.title = cmp ? s1name() : "";
         val.oninput = function () {
           var n = parseFloat(val.value.replace(/[^0-9.\-]/g, ""));
           state.rows[i].value = isNaN(n) ? 0 : n; render();
         };
 
-        var hl = document.createElement("button");
-        hl.className = "hl" + (state.highlight === i ? " on" : "");
-        hl.title = "Highlight in Signal Blue";
-        hl.innerHTML = "&#9670;";
-        hl.onclick = function () {
-          state.highlight = (state.highlight === i) ? -1 : i; renderRows(); render();
-        };
+        row.appendChild(lab); row.appendChild(val);
+
+        if (cmp) {
+          var val2 = document.createElement("input");
+          val2.type = "text"; val2.value = (r.value2 == null ? "" : r.value2); val2.placeholder = "0";
+          val2.title = s2name();
+          val2.oninput = function () {
+            var n = parseFloat(val2.value.replace(/[^0-9.\-]/g, ""));
+            state.rows[i].value2 = isNaN(n) ? 0 : n; render();
+          };
+          row.appendChild(val2);
+        } else {
+          var hl = document.createElement("button");
+          hl.className = "hl" + (state.highlight === i ? " on" : "");
+          hl.title = "Highlight in Signal Blue";
+          hl.innerHTML = "&#9670;";
+          hl.onclick = function () {
+            state.highlight = (state.highlight === i) ? -1 : i; renderRows(); render();
+          };
+          row.appendChild(hl);
+        }
 
         var del = document.createElement("button");
         del.className = "del"; del.title = "Remove row"; del.innerHTML = "&times;";
@@ -444,7 +483,7 @@
           renderRows(); render();
         };
 
-        row.appendChild(lab); row.appendChild(val); row.appendChild(hl); row.appendChild(del);
+        row.appendChild(del);
         wrap.appendChild(row);
       });
     }
@@ -493,6 +532,57 @@
       };
       var Cls = isArea ? window.Charts.AreaChart : window.Charts.LineChart;
       return { Cls: Cls, config: { data: data, options: options } };
+    }
+
+    // two-set comparison colour scale (orange vs Signal Blue)
+    function seriesColorScale() {
+      var scale = {};
+      scale[s1name()] = SERIES1_COLOR;
+      scale[s2name()] = SERIES2_COLOR;
+      return scale;
+    }
+
+    // grouped bar: two bars per category
+    function buildGroupedBar(horizontal) {
+      var s1 = s1name(), s2 = s2name(), data = [];
+      state.rows.forEach(function (r) {
+        data.push({ group: s1, key: r.label, value: parseFloat(r.value) || 0 });
+        data.push({ group: s2, key: r.label, value: parseFloat(r.value2) || 0 });
+      });
+      var valueAxis = { mapsTo: "value" };
+      var labelAxis = { mapsTo: "key", scaleType: "labels" };
+      var options = {
+        axes: horizontal
+          ? { left: labelAxis, bottom: valueAxis }
+          : { left: valueAxis, bottom: labelAxis },
+        legend: { enabled: true },
+        color: { scale: seriesColorScale() },
+        toolbar: { enabled: false },
+        height: "460px",
+        grid: { x: { enabled: false } }
+      };
+      return { Cls: window.Charts.GroupedBarChart, config: { data: data, options: options } };
+    }
+
+    // two-line comparison
+    function buildLineCompare() {
+      var s1 = s1name(), s2 = s2name(), data = [];
+      state.rows.forEach(function (r) {
+        data.push({ group: s1, key: r.label, value: parseFloat(r.value) || 0 });
+        data.push({ group: s2, key: r.label, value: parseFloat(r.value2) || 0 });
+      });
+      var options = {
+        axes: {
+          bottom: { mapsTo: "key", scaleType: "labels" },
+          left: { mapsTo: "value" }
+        },
+        legend: { enabled: true },
+        color: { scale: seriesColorScale() },
+        points: { radius: 4 },
+        toolbar: { enabled: false },
+        height: "460px"
+      };
+      return { Cls: window.Charts.LineChart, config: { data: data, options: options } };
     }
 
     /* Pie & donut are hand-drawn as clean SVG (Carbon's radial charts do not
@@ -606,10 +696,11 @@
       }
       holder.style.paddingTop = "";
 
+      var cmp = comparing();
       var built;
-      if (state.type === "bar") built = buildBar(false);
-      else if (state.type === "barh") built = buildBar(true);
-      else if (state.type === "line") built = buildLineOrArea(false);
+      if (state.type === "bar") built = cmp ? buildGroupedBar(false) : buildBar(false);
+      else if (state.type === "barh") built = cmp ? buildGroupedBar(true) : buildBar(true);
+      else if (state.type === "line") built = cmp ? buildLineCompare() : buildLineOrArea(false);
       else if (state.type === "area") built = buildLineOrArea(true);
 
       if (built && built.Cls) {
@@ -624,6 +715,13 @@
     /* ---------- highlight availability ---------- */
     function highlightAllowed() {
       return ["bar", "barh", "pie", "donut", "stat"].indexOf(state.type) !== -1;
+    }
+
+    /* ---------- comparison controls visibility ---------- */
+    function updateCompareUI() {
+      $("compare-field").style.display = compareAllowed() ? "" : "none";
+      $("series-names").style.display = (state.compare && compareAllowed()) ? "block" : "none";
+      $("data-hint").style.display = comparing() ? "none" : "";
     }
 
     /* ---------- paste parsing ---------- */
@@ -723,9 +821,22 @@
           btn.classList.add("active");
           state.type = btn.dataset.type;
           if (!highlightAllowed()) state.highlight = -1;
+          updateCompareUI();
           renderRows(); render();
         };
       });
+
+      // comparison controls
+      $("in-compare").onchange = function () {
+        state.compare = this.checked;
+        if (state.compare) state.highlight = -1;
+        updateCompareUI();
+        renderRows(); render();
+      };
+      $("in-series1").oninput = function () { state.series1 = this.value; render(); };
+      $("in-series2").oninput = function () { state.series2 = this.value; render(); };
+      $("in-series1").value = state.series1;
+      $("in-series2").value = state.series2;
 
       $("in-cat").oninput = function () { state.cat = this.value; render(); };
       $("in-title").oninput = function () { state.title = this.value; render(); };
@@ -742,6 +853,7 @@
       // seed inputs from state
       $("in-title").value = state.title;
 
+      updateCompareUI();
       renderRows();
       render();
       fitPreview();
