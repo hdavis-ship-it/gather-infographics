@@ -305,7 +305,12 @@
   }
   /* Data lines on the line & area charts (Carbon default 1.5) */
   #card path.line {
-    stroke-width: 6px !important;
+    stroke-width: 3px !important;
+  }
+  /* Point markers on the line chart — outline matches the line weight.
+     Carbon draws these via the scatter component (circle.dot, default 1.5). */
+  #card circle.dot {
+    stroke-width: 3px !important;
   }
 
   /* ---------- Mobile / narrow screens ----------
