@@ -22,6 +22,16 @@ value field appears on each row, plus two name fields. You get two bars per cate
 (or two lines) — the first set in Progress Orange, the second in Signal Blue, with a
 legend. The single-point highlight is off while comparing (colors are by data set then).
 
+## More field options
+- **Axis labels** (bar, horizontal bar, line, area): optional horizontal and vertical axis
+  titles — e.g. "Quarter" on the horizontal axis and "Dollars" or "%" on the vertical.
+- **Stat callout**: enter up to three data rows to show one, two, or three stats side by
+  side in a row. Highlight one with the ◈ to make it Signal Blue.
+- **Source line & links**: any web address you type (e.g. gathersignal.com/survey) shows in
+  Progress Orange as a link. Note — a downloaded PNG is a flat image, so the link is not
+  clickable inside the file itself; to make it truly clickable, place the link in your
+  article around the image. Showing the URL as text (as it does) lets readers find it.
+
 ## One-time setup: add your wordmark
 Drop your official wordmark PNG into the `assets/` folder, named exactly:
 

@@ -187,17 +187,17 @@
   #card {
     width: 1000px;
     background: var(--indep-white);
-    padding: 80px;                 /* 80px on all sides, per spec */
+    padding: 56px;                 /* outer card padding (tightened per mockup) */
     font-family: Arial, sans-serif;
   }
   #card .cat {
     font-family: Arial, sans-serif;
     font-weight: 700;
-    font-size: 15px;
+    font-size: 16px;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--orange);
-    margin: 0 0 10px;
+    margin: 0 0 22px;
   }
   #card .title {
     font-family: 'Merriweather', serif;
@@ -219,7 +219,7 @@
     width: 100%;
     height: auto;              /* grows to fit chart + axis title + legend */
     position: relative;
-    margin-top: 36px;          /* breathing room between title and chart */
+    margin-top: 56px;          /* breathing room between title and chart */
     /* point Carbon's font at Merriweather */
     --cds-charts-font-family: 'Merriweather', serif;
     --cds-charts-font-family-condensed: 'Merriweather', serif;
@@ -232,14 +232,14 @@
     --cds-layer-accent-01: #E4E4E4;
     --cds-text-primary: #404040;         /* Impact Black labels */
     --cds-text-secondary: #404040;
-    --cds-border-strong-01: #A5A5A5;     /* axis lines = Better Gray */
-    --cds-border-subtle-selected-01: #D3D3D3; /* grid lines = light gray */
+    --cds-border-strong-01: #8A8A8A;     /* axis lines (darkened for legibility) */
+    --cds-border-subtle-selected-01: #C0C0C0; /* grid lines (darkened for legibility) */
     --cds-focus: #EE4B22;
   }
   /* Stat-callout (non-Carbon) — up to three stats in a row */
   #stat {
     display: none;
-    margin-top: 36px;
+    margin-top: 56px;
     padding: 10px 0 6px;
     gap: 44px;
     align-items: flex-start;
@@ -268,13 +268,13 @@
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
-    margin-top: 28px;
+    margin-top: 44px;
     padding-top: 0;
     gap: 20px;
   }
   #card .source {
     font-family: Arial, sans-serif;
-    font-size: 12px;
+    font-size: 14px;
     color: var(--better-gray);
     margin: 0;
     line-height: 1.4;
@@ -288,6 +288,36 @@
   /* Axis titles: match the gray of the data (tick) labels, normal weight
      (the ALL-CAPS comes from uppercasing the text itself). */
   #card .axis-title { fill: #525252; font-weight: 400; }
+  /* Data (tick) labels: bump to 16px (Carbon body-02) for mobile legibility.
+     Export inlines each node's computed font-size, so this carries into the PNG. */
+  #card .axis .tick text { font-size: 16px !important; }
+
+  /* ---------- Mobile / narrow screens ----------
+     Desktop keeps the side-by-side layout. Below 900px the two columns stack
+     (preview first, controls under it) and the fixed 100vh heights are dropped
+     so the page scrolls normally instead of trapping content off-screen. */
+  @media (max-width: 900px) {
+    body {
+      grid-template-columns: 1fr;   /* single column */
+      min-height: 0;
+    }
+    .stage {
+      order: -1;                    /* preview above the controls */
+      height: auto;                 /* was 100vh — let it grow */
+      padding: 16px;
+      overflow-x: auto;
+      border-bottom: 1px solid #e2e2e2;
+    }
+    .panel {
+      height: auto;                 /* was 100vh */
+      overflow-y: visible;
+      border-right: none;
+      padding: 20px 16px 48px;
+    }
+    .card-scaler { transform-origin: top left; }
+    /* inputs at 16px stop iOS from auto-zooming the page on focus */
+    .row input, .panel input[type="text"], .panel textarea { font-size: 16px; }
+  }
 </style>
 </head>
 <body>
@@ -345,9 +375,9 @@
 
     <div class="field">
       <label>Data</label>
+      <p class="hint" id="data-hint" style="margin-top:0;margin-bottom:8px;">Click the ◈ on a row to highlight that one point in Signal Blue. (Bar, pie, donut &amp; stat.)</p>
       <div class="rows" id="rows"></div>
       <button class="mini-btn" id="add-row">+ Add row</button>
-      <p class="hint" id="data-hint">Click the ◈ on a row to highlight that one point in Signal Blue. (Bar, pie, donut &amp; stat.)</p>
     </div>
 
     <div class="field">
@@ -522,7 +552,7 @@
     function applyAxisTitles(axes) { return axes; }
 
     // One gap value for BOTH axis titles, and the title band thickness.
-    var AXIS_GAP = 20;
+    var AXIS_GAP = 32;
     var AXIS_TITLE_H = 14;
 
     // Align the HTML overlays (x-axis title + legend) to the plot's left edge — the
@@ -703,7 +733,7 @@
         // percentage label just outside the ring
         var lx = cx + (R + 26) * Math.cos(mid), ly = cy + (R + 26) * Math.sin(mid);
         var t = svgEl("text", { x: lx, y: ly, "text-anchor": "middle", "dominant-baseline": "middle",
-                                "font-family": "Arial, sans-serif", "font-size": "14", fill: "#404040" });
+                                "font-family": "Arial, sans-serif", "font-size": "16", fill: "#404040" });
         t.textContent = Math.round(frac * 100) + "%";
         svg.appendChild(t);
         a0 = a1;
@@ -719,7 +749,7 @@
       // legend as HTML (exports reliably, easy to center)
       var leg = document.createElement("div");
       leg.style.cssText = "display:flex;flex-wrap:wrap;justify-content:center;gap:8px 18px;margin-top:6px;" +
-                          "font-family:Arial,sans-serif;font-size:13px;color:#404040;";
+                          "font-family:Arial,sans-serif;font-size:16px;color:#404040;";
       state.rows.forEach(function (r, i) {
         var v = parseFloat(r.value) || 0; if (v <= 0) return;
         var item = document.createElement("span");
@@ -741,7 +771,7 @@
       if (items.length === 0) items = [{ label: "", value: "" }];
       var n = items.length;
       var bigSize = n <= 1 ? 140 : (n === 2 ? 104 : 78);
-      var labelSize = n <= 1 ? 18 : 15;
+      var labelSize = n <= 1 ? 20 : 18;   /* 16px floor for all labels (mobile legibility) */
       items.forEach(function (r, i) {
         var tile = document.createElement("div");
         tile.className = "stat-tile" + (n === 1 ? " solo" : "");
@@ -820,7 +850,7 @@
       else if (state.type === "area") built = buildLineOrArea(true);
 
       if (built && built.Cls) {
-        var TFONT = "400 12px Arial, sans-serif";
+        var TFONT = "400 16px Arial, sans-serif";
         // gutter = title band + the same 20px gap used under the horizontal title
         var padL = state.yAxis ? (AXIS_TITLE_H + AXIS_GAP) : 0;
         holder.style.paddingLeft = padL + "px";
@@ -859,9 +889,9 @@
         if (comparing()) {
           var lg = document.createElement("div");
           lg.className = "ov-legend";
-          lg.style.cssText = "margin-top:" + (state.xAxis ? 14 : 20) +
+          lg.style.cssText = "margin-top:" + (state.xAxis ? 28 : 32) +
             "px;display:flex;align-items:center;flex-wrap:wrap;gap:6px 18px;" +
-            "font:400 13px Arial,sans-serif;color:#404040;";
+            "font:400 16px Arial,sans-serif;color:#404040;";
           [[s1name(), SERIES1_COLOR], [s2name(), SERIES2_COLOR]].forEach(function (p) {
             var item = document.createElement("span");
             item.style.cssText = "display:inline-flex;align-items:center;gap:6px;";
@@ -880,6 +910,10 @@
           setTimeout(function () { alignCartesianOverlays(holder); }, ms);
         });
       }
+      // card height changes with chart type/content — re-fit so the reserved
+      // space stays correct (matters on mobile, where the card is scaled down)
+      requestAnimationFrame(fitPreview);
+      setTimeout(fitPreview, 250);
     }
 
     /* ---------- highlight availability ---------- */
@@ -980,9 +1014,24 @@
     function fitPreview() {
       var scaler = $("scaler");
       var stage = scaler.parentNode;
-      var avail = stage.clientWidth - 80;
+      // Use the stage's real inner width (its padding changes at the mobile
+      // breakpoint, so a hard-coded inset would go negative on a phone and
+      // scale the card to nothing).
+      var cs = window.getComputedStyle(stage);
+      var avail = stage.clientWidth
+                - parseFloat(cs.paddingLeft || 0)
+                - parseFloat(cs.paddingRight || 0);
+      if (!avail || avail < 1) avail = 1;
       var scale = Math.min(1, avail / 1000);
       scaler.style.transform = "scale(" + scale + ")";
+      // transform doesn't change layout size, so reserve the scaled height —
+      // otherwise the stage keeps the full 1000px-tall footprint and leaves a
+      // large empty gap above the controls on mobile.
+      var card = $("card");
+      if (card) {
+        scaler.style.height = (card.offsetHeight * scale) + "px";
+        scaler.style.width = (1000 * scale) + "px";
+      }
     }
 
     /* ---------- wire up ---------- */
