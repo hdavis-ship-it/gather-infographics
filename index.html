@@ -232,8 +232,10 @@
     --cds-layer-accent-01: #E4E4E4;
     --cds-text-primary: #404040;         /* Impact Black labels */
     --cds-text-secondary: #404040;
-    --cds-border-strong-01: #8A8A8A;     /* axis lines (darkened for legibility) */
-    --cds-border-subtle-selected-01: #C0C0C0; /* grid lines (darkened for legibility) */
+    --cds-border-strong-01: #8A8A8A;     /* axis domain lines (path.domain) */
+    --cds-border-subtle-selected-01: #C0C0C0; /* selected-tick borders (NOT the grid) */
+    /* NOTE: grid lines read --cds-layer-accent-01, and are overridden explicitly
+       further down — see the "chart line weights" block. */
     --cds-focus: #EE4B22;
   }
   /* Stat-callout (non-Carbon) — up to three stats in a row */
@@ -291,6 +293,20 @@
   /* Data (tick) labels: bump to 16px (Carbon body-02) for mobile legibility.
      Export inlines each node's computed font-size, so this carries into the PNG. */
   #card .axis .tick text { font-size: 16px !important; }
+
+  /* ---------- chart line weights ----------
+     Background grid lines: Carbon defaults to 1px in --cds-layer-accent-01
+     (#e0e0e0). Overridden here to be darker and set to an explicit weight.
+     The export inlines computed styles, so these carry into the PNG. */
+  #card .cds--cc--grid g.x.grid g.tick line,
+  #card .cds--cc--grid g.y.grid g.tick line {
+    stroke: #A5A5A5 !important;      /* Better Gray — darker, was ~#E0E0E0 */
+    stroke-width: 1px !important;    /* Carbon default weight — darker, not thicker */
+  }
+  /* Data lines on the line & area charts (Carbon default 1.5) */
+  #card path.line {
+    stroke-width: 6px !important;
+  }
 
   /* ---------- Mobile / narrow screens ----------
      Desktop keeps the side-by-side layout. Below 900px the two columns stack
