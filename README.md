@@ -1,4 +1,4 @@
-# Gather Signal — Infographic Maker
+# Gather Signal — Infographic Builder
 
 A small web tool that builds on-brand Gather Signal infographics (bar, horizontal
 bar, line, pie, donut, area, and a big-number stat callout) and downloads them as
